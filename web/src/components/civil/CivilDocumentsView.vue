@@ -78,7 +78,7 @@
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator';
 import { namespace } from 'vuex-class';
-import CivilFileDocuments from '../store/modules/CivilFileDocuments';
+import CivilFileDocuments from '../../store/modules/CivilFileDocuments';
 const civilState = namespace('CivilFileDocuments');
 
 enum fieldTab {Categories=0, Summary}
@@ -92,8 +92,8 @@ export default class CivilDocumentsView extends Vue {
     @civilState.Action
     public UpdateCivilFile!: (newCivilFileDocument: any) => void
 
-    public getDocuments(): void {
 
+    public getDocuments(): void {
         
          this.$http.get('api/files/civil/'+ this.civilFileDocument.fileNumber)
             .then(Response => Response.json(), err => {console.log('error');this.isMounted = true;}        
@@ -112,9 +112,9 @@ export default class CivilDocumentsView extends Vue {
             });
     }
 
-    mounted () { 
-        this.civilFileDocument.fileNumber = this.$route.params.fileNumber;
-        this.UpdateCivilFile(this.civilFileDocument);        
+    mounted () {
+        this.civilFileDocument.fileNumber = this.$route.params.fileNumber
+        this.UpdateCivilFile(this.civilFileDocument);
         this.getDocuments();        
     }
 
@@ -269,7 +269,7 @@ export default class CivilDocumentsView extends Vue {
         this.loadingPdf = true;
         const filename = 'doc'+documentId+'.pdf';
         window.open(`api/files/document/${documentId}/${filename}?isCriminal=false`)
-        this.loadingPdf = false;
+        this.loadingPdf = true;
     }
     
     public openCourtSummaryPdf(appearanceId): void {
@@ -277,7 +277,7 @@ export default class CivilDocumentsView extends Vue {
         this.loadingPdf = true;        
         const filename = 'court summary_'+appearanceId+'.pdf';
         window.open(`api/files/civil/court-summary-report/${appearanceId}/${filename}`)
-        this.loadingPdf = false;
+        this.loadingPdf = true;
     }
     
     public colHover(hovered, mouseEvent) {            

@@ -1,7 +1,8 @@
 import { RouteConfig } from 'vue-router'
 import Home from '../components/Home.vue'
-import CivilDocumentsView from "../components/CivilDocumentsView.vue";
-import CriminalDocumentsView from "../components/CriminalDocumentsView.vue";
+import CivilDocumentsView from "../components/civil/CivilDocumentsView.vue";
+import CriminalDocumentsView from "../components/criminal/CriminalDocumentsView.vue";
+import CriminalCaseDetails from "../components/criminal/CriminalCaseDetails.vue";
 
 const routes: Array<RouteConfig> = [
   {
@@ -12,14 +13,17 @@ const routes: Array<RouteConfig> = [
   {
     path: '/civil-file/:fileNumber',
     name: 'CivilDocumentsView',
-    component: CivilDocumentsView, 
+    component: CivilDocumentsView,
     props: true
   },
   {
     path: '/criminal-file/:fileNumber',
-    name: 'CriminalDocumentsView',
-    component: CriminalDocumentsView, 
-    props: true
+    name: 'CriminalCaseDetails',
+    component: CriminalCaseDetails,
+    props: true,
+    children: [
+
+    ]
   }
 ]
 

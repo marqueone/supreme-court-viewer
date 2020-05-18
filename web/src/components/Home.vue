@@ -30,6 +30,7 @@
     import { namespace } from 'vuex-class'
     import CivilFileDocuments from '../store/modules/CivilFileDocuments';
     import CriminalFileDocuments from '../store/modules/CriminalFileDocuments';
+    import CriminalCaseDetails from "../components/criminal/CriminalCaseDetails.vue";
     const civilState = namespace('CivilFileDocuments');
     const criminalState = namespace('CriminalFileDocuments');
 
@@ -58,7 +59,7 @@
                 this.$router.push({name:'CivilDocumentsView', params: {fileNumber: fileDocument.fileNumber}})
             } else if(this.selected == 'criminal') {
                 this.UpdateCriminalFile(fileDocument)
-                this.$router.push({name:'CriminalDocumentsView', params: {fileNumber: fileDocument.fileNumber}})
+                this.$router.push({name:'CriminalCaseDetails', params: {fileNumber: fileDocument.fileNumber}})
             }
             
         }        

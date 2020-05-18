@@ -14,7 +14,7 @@
 
     <b-card bg-variant="light" v-if= "isMounted && !isDataValid">
         <b-card  style="min-height: 100px;">
-            <span>This <b>File-Number '{{this.criminalFileDocument.fileNumber}}'</b> doesn't have participant information. </span>
+            <span>This <b>File-Number '{{this.criminalFileDocument.fileNumber}}'</b> doesn't exist in the <b>criminal</b> records. </span>
         </b-card>
         <b-card>         
             <b-button variant="info" @click="navigateToLandingPage">Back to the Landing Page</b-button>
@@ -37,7 +37,7 @@
         <b-card>
             <b-dropdown  variant="light text-info" :text="getNameOfParticipant(activeparticipant)" class="m-2">    
                 <b-dropdown-item  
-                    v-for="(file,index) in SortedParticipants" 
+                    v-for="(file,index) in accusedFiles" 
                     :key="index"
                     v-on:click="activeparticipant = index">
                         {{getNameOfParticipant(index)}}
@@ -85,16 +85,10 @@
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator';
 import { namespace } from 'vuex-class';
-import CriminalFileDocuments from '../store/modules/CriminalFileDocuments';
+import CriminalFileDocuments from '../../store/modules/CriminalFileDocuments';
 const criminalState = namespace('CriminalFileDocuments');
 
 enum fieldTab {Categories=0, Summary}
-enum DecodeCourtLevel {'P'= 0, 'S' = 1, 'A' = 2 }
-enum DecodeCourtClass {
-    'A' = 0, 'Y' = 1, 'T' = 2, 'F' = 3, 'C' = 4, 'M' = 5,        
-    'L' = 6, 'R' = 7, 'B' = 8, 'D' = 9, 'E' = 10, 'G' = 11,        
-    'H' = 12, 'N' = 13, 'O' = 14, 'P' = 15, 'S' = 16, 'V' = 17,
-}
 
 @Component
 export default class CriminalDocumentsView extends Vue {
@@ -104,40 +98,38 @@ export default class CriminalDocumentsView extends Vue {
 
     @criminalState.Action
     public UpdateCriminalFile!: (newCriminalFileDocument: any) => void
-    
+
     public getDocuments(): void {
 
-       
-        this.$http.get('api/files/criminal/'+ this.criminalFileDocument.fileNumber)
-            .then(Response => Response.json(), err => {console.log(err);this.isMounted = true;}        
-            ).then(data => {
-                this.participantJson = data.participant 
-                this.courtLevel = DecodeCourtLevel[data.courtLevelCd];
-                this.courtClass = DecodeCourtClass[data.courtClassCd];
-
-                this.ExtractDocumentInfo()           
-
-                if(this.participantFiles.length)
-                {
-                    this.isMounted = true;
-                    this.isDataValid = true;
-                }
-                else
-                {
-                    this.isMounted = true;
-                }
-            });
+        Promise.all([            
+            this.$http.get('api/files/criminal/'+ this.criminalFileDocument.fileNumber),
+            this.$http.get('api/files/criminal/file-content?justinNumber='+ this.criminalFileDocument.fileNumber) 
+        ]).then(responses =>                
+            Promise.all(responses.map(res => res.json())), err => {console.log('error');this.isMounted = true;}            
+        ).then(data => {           
+            this.participantJson = data[0].participant                
+            this.accusedFileJson = data[1].accusedFile               
+            this.ExtractDocumentInfo()
+            if(this.accusedFiles.length)
+            {
+                this.isMounted = true;
+                this.isDataValid = true;
+            }
+            else
+            {
+                this.isMounted = true;
+            }
+        });
     }
 
-    mounted () { 
+    mounted () {        
         this.criminalFileDocument.fileNumber = this.$route.params.fileNumber
-        this.UpdateCriminalFile(this.criminalFileDocument)        
-        this.getDocuments();  
+        this.UpdateCriminalFile(this.criminalFileDocument);                 
+        this.getDocuments();        
     }
 
     participantJson;
-    courtLevel;
-    courtClass;
+    accusedFileJson;
 
     message = 'Loading';
 
@@ -153,7 +145,7 @@ export default class CriminalDocumentsView extends Vue {
     isMounted = false
     isDataValid = false
 
-    participantFiles: any[] = [];
+    accusedFiles: any[] = [];
     ropDocuments: any[] = [];
     categories: any = []; 
 
@@ -174,9 +166,9 @@ export default class CriminalDocumentsView extends Vue {
         
     ];
 
-    public getNameOfParticipant(num)
+    public getNameOfParticipant(value)
     {        
-        return  this.participantFiles[num]["Last Name"]+', '+this.participantFiles[num]["First Name"];           
+        return  this.accusedFiles[value]["Last Name"]+', '+this.accusedFiles[value]["First Name"];           
     }
 
     public navigateToLandingPage() {
@@ -191,7 +183,8 @@ export default class CriminalDocumentsView extends Vue {
         }
         else if (index==0 && this.activetab=='ROP')
         {
-            this.openRopPdf(data.item["Index"])     
+             //TODO replace with ROP file open 
+             console.log("open ROP pdf")     
         }         
     }
 
@@ -210,79 +203,58 @@ export default class CriminalDocumentsView extends Vue {
     }
     
     public ExtractDocumentInfo(): void {
-       let ropExists = false 
-        for(const fileIndex in this.participantJson)
-        {            
-            const fileInfo = {};
-            const jFile =  this.participantJson[fileIndex];
-            fileInfo["Index"] = fileIndex; 
-            fileInfo["Part ID"] = jFile.partId;
-            fileInfo["Prof Seq No"] = jFile.profSeqNo;
-            fileInfo["First Name"] = jFile.givenNm? jFile.givenNm: '_noGivenname';
-            fileInfo["Last Name"] =  jFile.lastNm? jFile.lastNm: '_noLastname' ;            
+       
+        for(const fileIndex in this.accusedFileJson)
+        {
+            const fileInfo = {}; 
+            const jFile =  this.accusedFileJson[fileIndex];
+            
+            fileInfo["Index"] = fileIndex;
+            fileInfo["Part ID"] = jFile.partId; 
+            
             
             fileInfo["Documents"] = [];
-            fileInfo["Record of Proceedings"] = [];
 
             const document: any[] = [];
-            const rop: any[] = [];
             for(const doc of jFile.document)
             {
-                if(doc.category != 'rop') {
-                    const docInfo = {}; 
-                    docInfo["Date Filed/Issued"]= doc.issueDate? doc.issueDate.split(" ")[0] : '';
-                    docInfo["Document Type"]= doc.docmFormDsc;
-                    docInfo["Category"]= doc.docmClassification;
-                    docInfo["Pages"]= doc.documentPageCount;
-                    docInfo["PdfAvail"]= doc.imageId? true : false
-                    docInfo["Image ID"]= doc.imageId
-                    
-                    if((this.categories.indexOf(docInfo["Category"]) < 0) ) this.categories.push(docInfo["Category"]) 
-                    
-                    document.push(docInfo);
-                }
-                else{
-                    const docInfo = {};                   
-                    docInfo["Document Type"]= 'Record of Proceedings';
-                    docInfo["Category"]= "ROP";
-                    docInfo["Pages"]= doc.documentPageCount;
-                    docInfo["Index"] = fileIndex;
-                    rop.push(docInfo);
-                    ropExists = true
-                }
+                const docInfo = {}; 
+                docInfo["Date Filed/Issued"]= doc.issueDate.split(" ")[0];
+                docInfo["Document Type"]= doc.docmFormDsc;
+                docInfo["Category"]= doc.docmClassification;
+                docInfo["Pages"]= doc.documentPageCount;
+                docInfo["PdfAvail"]= doc.imageId? true : false
+                docInfo["Image ID"]= doc.imageId
+
+                if((this.categories.indexOf(docInfo["Category"]) < 0) ) this.categories.push(docInfo["Category"]) 
+                
+                document.push(docInfo);
             }
             fileInfo["Documents"] = document;
-            fileInfo["Record of Proceedings"] = rop;
-                        
-            this.participantFiles.push(fileInfo);
+            
+            this.accusedFiles.push(fileInfo);
+        }
+
+        for(const file of this.accusedFiles)
+        {
+            const index = file["Index"];
+            file["First Name"] = this.participantJson[index]? this.participantJson[index].givenNm :'';
+            file["Last Name"] =  this.participantJson[index]? this.participantJson[index].lastNm  :'';
         }
 
          this.categories.sort()
-         if(ropExists) this.categories.push("ROP");
+         this.categories.push("ROP")
          this.categories.unshift("ALL") 
-        
-    }
-
-    get SortedParticipants()
-    {
-        return this.participantFiles.sort((a, b): any =>
-        {
-            const LastName1 = a["Last Name"]? a["Last Name"].toUpperCase() : '';
-            const LastName2 = b["Last Name"]? b["Last Name"].toUpperCase() : '';
-            if(LastName1 > LastName2) return 1;
-            if(LastName1 < LastName2) return -1;
-            return 0;
-        });        
     }
 
     get FilteredDocuments() {       
         if(this.activetab == 'ROP')
         {
             this.fieldsTab = fieldTab.Summary;
-            return this.participantFiles[this.activeparticipant]["Record of Proceedings"];
+            return this.ropDocuments;
         }
         else{  
-            return this.participantFiles[this.activeparticipant]["Documents"].filter(doc => {                
+            return this.accusedFiles[this.activeparticipant]["Documents"].filter(doc => {                
                 this.fieldsTab = fieldTab.Categories;
                 if ( this.activetab != 'ALL' )
                 {
@@ -311,17 +283,7 @@ export default class CriminalDocumentsView extends Vue {
         const filename = 'doc'+imageId+'.pdf';
         window.open(`api/files/document/${imageId}/${filename}?isCriminal=true`)
         this.loadingPdf = false;
-    }
-    
-    public openRopPdf(index): void {
-        this.loadingPdf = true;  
-        const partID = this.participantFiles[index]["Part ID"];
-        const profSeqNo = this.participantFiles[index]["Prof Seq No"];      
-        const filename = 'ROP_'+partID+'.pdf';
-        window.open(`api/files/criminal/record-of-proceedings/${partID}/${filename}?profSequenceNumber=${profSeqNo}&courtLevelCode=${this.courtLevel}&courtClassCode=${this.courtClass}`)
-        this.loadingPdf = false;
-    }
-    
+    }    
 }
 </script>
 
