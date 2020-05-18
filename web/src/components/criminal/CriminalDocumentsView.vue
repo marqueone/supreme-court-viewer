@@ -85,8 +85,8 @@
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator';
 import { namespace } from 'vuex-class';
-import CriminalFileDocuments from '../../store/modules/CriminalFileDocuments';
-const criminalState = namespace('CriminalFileDocuments');
+import '@store/modules/CriminalFileInformation';
+const criminalState = namespace('CriminalFileInformation');
 
 enum fieldTab {Categories=0, Summary}
 
@@ -94,16 +94,16 @@ enum fieldTab {Categories=0, Summary}
 export default class CriminalDocumentsView extends Vue {
 
     @criminalState.State
-    public criminalFileDocument!: any
+    public criminalFileInformation!: any
 
     @criminalState.Action
-    public UpdateCriminalFile!: (newCriminalFileDocument: any) => void
+    public UpdateCriminalFile!: (newCriminalFileInformation: any) => void
 
     public getDocuments(): void {
 
         Promise.all([            
-            this.$http.get('api/files/criminal/'+ this.criminalFileDocument.fileNumber),
-            this.$http.get('api/files/criminal/file-content?justinNumber='+ this.criminalFileDocument.fileNumber) 
+            this.$http.get('api/files/criminal/'+ this.criminalFileInformation.fileNumber),
+            this.$http.get('api/files/criminal/file-content?justinNumber='+ this.criminalFileInformation.fileNumber) 
         ]).then(responses =>                
             Promise.all(responses.map(res => res.json())), err => {console.log('error');this.isMounted = true;}            
         ).then(data => {           
@@ -123,8 +123,8 @@ export default class CriminalDocumentsView extends Vue {
     }
 
     mounted () {        
-        this.criminalFileDocument.fileNumber = this.$route.params.fileNumber
-        this.UpdateCriminalFile(this.criminalFileDocument);                 
+        this.criminalFileInformation.fileNumber = this.$route.params.fileNumber
+        this.UpdateCriminalFile(this.criminalFileInformation);                 
         this.getDocuments();        
     }
 
